@@ -1,50 +1,119 @@
-# Welcome to your Expo app 👋
+# Besqaa — Scan · Source · Supply
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo / React Native mobile app for **besqaa.in** (buyers): browse the catalog, cart & checkout
+(COD or UPI with payment-proof verification), Besqaa Query sourcing requests, buyback tracking.
 
-## Get started
+The platform is split across three repos:
 
-1. Install dependencies
+| Part | Stack | Repo | Runs on |
+|------|-------|------|---------|
+| 📱 **Mobile app** (this repo) | Expo / React Native (Expo Router) | `besqaa_app` | iOS / Android / Web |
+| ⚙️ **Backend API** | Node + Express + MongoDB + AWS S3 | `besqaa_backend` | http://localhost:5000 |
+| 🧑‍💼 **Admin panel** | React + Vite | `besqaa_admin` | http://localhost:5173 |
 
-   ```bash
-   npm install
-   ```
+The admin creates **categories** → lists **products** into them → they appear in
+the app **instantly**. Buyers browse, add to cart, checkout, and submit
+**Besqaa Queries** (a sourcing-request form that replaces the old barcode scanner).
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Prerequisites
 
-In the output, you'll find options to open the app in a
+- **Node.js 18+** (tested on 20)
+- **MongoDB** — either:
+  - a local install (`mongodb://127.0.0.1:27017`), or
+  - a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster (paste its URI)
+- **AWS S3 bucket** + IAM keys (for product image uploads) — optional until you upload images
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## 1) Backend (`besqaa_backend` repo)
 
 ```bash
-npm run reset-project
+git clone <besqaa_backend repo> && cd besqaa_backend
+npm install
+cp .env.example .env          # then edit .env (see below)
+npm run seed                  # creates the admin + demo catalog
+npm run dev                   # starts http://localhost:5000
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+**`.env` keys that matter:**
 
-## Learn more
+```
+MONGO_URI=mongodb://127.0.0.1:27017/besqaa      # or your Atlas URI
+JWT_SECRET=<a long random string>
+SEED_ADMIN_EMAIL=admin@besqaa.in                # bootstrap admin login
+SEED_ADMIN_PASSWORD=Admin@12345
+# AWS S3 — required only to upload product images:
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+S3_BUCKET=besqaa-product-images
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+> `npm run seed` prints the admin credentials and inserts demo categories/products
+> so the app shows content immediately.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+**Run the automated end-to-end test** (uses an in-memory MongoDB, no setup):
 
-## Join the community
+```bash
+node smoke-test.mjs
+```
 
-Join our community of developers creating universal apps.
+## 2) Admin panel (`besqaa_admin` repo)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+git clone <besqaa_admin repo> && cd besqaa_admin
+npm install
+cp .env.example .env          # VITE_API_URL=http://localhost:5000/api
+npm run dev                   # http://localhost:5173
+```
+
+Log in with the seeded admin. Then:
+1. **Categories → New category** (e.g. *Televisions*)
+2. **Products → List product**, pick the category, upload photos (→ S3), save
+3. The product is now live in the app. Manage **Orders** and **Besqaa Queries** from the sidebar.
+
+## 3) Mobile app (this repo)
+
+```bash
+npm install                   # already done if you cloned fresh
+npx expo start
+```
+
+Set the API URL the app should call. Defaults work for simulators; for a **physical
+phone** create a `.env` at the repo root:
+
+```
+EXPO_PUBLIC_API_URL=http://<your-computer-LAN-IP>:5000/api
+```
+
+| Where the app runs | Default API host |
+|--------------------|------------------|
+| iOS simulator / web | `http://localhost:5000/api` |
+| Android emulator | `http://10.0.2.2:5000/api` |
+| Physical phone (Expo Go) | set `EXPO_PUBLIC_API_URL` to your LAN IP |
+
+---
+
+## App flow
+
+`Splash → Sign in / Sign up → Tabs`
+
+**Tabs:** Home · Products · **Besqaa Query** (center) · Cart · Profile
+Plus: Product details, Checkout, Order placed, My Orders, Saved.
+
+## API overview
+
+| Method | Route | Who |
+|--------|-------|-----|
+| POST | `/api/auth/register`, `/api/auth/login` | Buyers |
+| POST | `/api/admin/auth/login` | Admin (separate) |
+| GET | `/api/categories`, `/api/products` | Public (app) |
+| POST/PUT/DELETE | `/api/categories`, `/api/products` | Admin |
+| POST | `/api/upload` | Admin (S3) |
+| GET/POST/PUT/DELETE | `/api/cart/*` | Buyer |
+| POST/GET | `/api/orders` | Buyer |
+| GET/PUT | `/api/admin/orders`, `/api/admin/queries` | Admin |
+| POST | `/api/queries` | Buyer / guest (Besqaa Query) |
+```
