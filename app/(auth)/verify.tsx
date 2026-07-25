@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Field } from '@/components/besqaa/Field';
 import { PrimaryButton } from '@/components/besqaa/PrimaryButton';
 import { useAuth } from '@/lib/auth';
@@ -17,6 +18,7 @@ import { theme } from '@/lib/theme';
 
 export default function Verify() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { verifyOtp, resendOtp } = useAuth();
   const params = useLocalSearchParams<{
     pendingId: string;
@@ -26,6 +28,8 @@ export default function Verify() {
     devPhoneOtp?: string;
   }>();
 
+  // Email is optional at signup — phone-only accounts verify via SMS alone.
+  const hasEmail = !!params.email;
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [error, setError] = useState('');
@@ -41,7 +45,11 @@ export default function Verify() {
   async function handleVerify() {
     setError('');
     if (!emailOtp.trim() && !phoneOtp.trim()) {
-      setError('Enter the OTP from your email or phone — either one works');
+      setError(
+        hasEmail
+          ? 'Enter the OTP from your email or phone — either one works'
+          : 'Enter the OTP sent to your phone'
+      );
       return;
     }
     setLoading(true);
@@ -63,8 +71,8 @@ export default function Verify() {
     setError('');
     try {
       const fresh = await resendOtp(params.pendingId);
-      if (fresh) setDevOtps({ email: fresh.email, phone: fresh.phone });
-      setInfo('New OTPs sent to your email and phone');
+      if (fresh) setDevOtps({ email: fresh.email || '', phone: fresh.phone });
+      setInfo(hasEmail ? 'New OTPs sent to your email and phone' : 'New OTP sent to your phone');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -77,36 +85,55 @@ export default function Verify() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 56, paddingBottom: insets.bottom + 28 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.iconWrap}>
           <Ionicons name="shield-checkmark" size={40} color={theme.colors.gold} />
         </View>
         <Text style={styles.title}>Verify your account</Text>
-        <Text style={styles.subtitle}>
-          We sent one-time codes to{'\n'}
-          <Text style={styles.highlight}>{params.email}</Text> and{' '}
-          <Text style={styles.highlight}>{params.phone}</Text>
-        </Text>
+        {hasEmail ? (
+          <Text style={styles.subtitle}>
+            We sent one-time codes to{'\n'}
+            <Text style={styles.highlight}>{params.email}</Text> and{' '}
+            <Text style={styles.highlight}>{params.phone}</Text>
+          </Text>
+        ) : (
+          <Text style={styles.subtitle}>
+            We sent a one-time code to{'\n'}
+            <Text style={styles.highlight}>{params.phone}</Text>
+          </Text>
+        )}
 
-        <View style={styles.eitherPill}>
-          <Ionicons name="flash" size={13} color={theme.colors.gold} />
-          <Text style={styles.eitherText}>Entering either one verifies you</Text>
-        </View>
+        {hasEmail && (
+          <View style={styles.eitherPill}>
+            <Ionicons name="flash" size={13} color={theme.colors.gold} />
+            <Text style={styles.eitherText}>Entering either one verifies you</Text>
+          </View>
+        )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {info ? <Text style={styles.info}>{info}</Text> : null}
 
         <View style={{ marginTop: 20 }}>
-          <Field
-            label="Email OTP"
-            icon="mail-outline"
-            placeholder="6-digit code from email"
-            keyboardType="number-pad"
-            maxLength={6}
-            value={emailOtp}
-            onChangeText={setEmailOtp}
-          />
-          <Text style={styles.or}>— OR —</Text>
+          {hasEmail && (
+            <>
+              <Field
+                label="Email OTP"
+                icon="mail-outline"
+                placeholder="6-digit code from email"
+                keyboardType="number-pad"
+                maxLength={6}
+                value={emailOtp}
+                onChangeText={setEmailOtp}
+              />
+              <Text style={styles.or}>— OR —</Text>
+            </>
+          )}
           <Field
             label="Phone OTP"
             icon="call-outline"
@@ -119,9 +146,9 @@ export default function Verify() {
         </View>
 
         {/* Dev helper — visible only while no SMS/email provider is wired up. */}
-        {devOtps.email ? (
+        {devOtps.email || devOtps.phone ? (
           <Text style={styles.devHint}>
-            DEV · email OTP: {devOtps.email} · phone OTP: {devOtps.phone}
+            DEV ·{devOtps.email ? ` email OTP: ${devOtps.email} ·` : ''} phone OTP: {devOtps.phone}
           </Text>
         ) : null}
 
@@ -141,7 +168,7 @@ export default function Verify() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 26, paddingTop: 90, flexGrow: 1, backgroundColor: theme.colors.bg },
+  container: { padding: 26, flexGrow: 1, backgroundColor: theme.colors.bg },
   iconWrap: {
     alignSelf: 'center',
     width: 88,

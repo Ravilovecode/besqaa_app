@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Field } from '@/components/besqaa/Field';
 import { PrimaryButton } from '@/components/besqaa/PrimaryButton';
@@ -22,6 +23,7 @@ const GLOW = 440;
 
 export default function Login() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +45,7 @@ export default function Login() {
   async function handleLogin() {
     setError('');
     if (!email || !password) {
-      setError('Please enter your email and password');
+      setError('Please enter your email or phone number, and password');
       return;
     }
     setLoading(true);
@@ -78,7 +80,14 @@ export default function Login() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        // Safe-area aware: keeps the footer clear of Android nav buttons / iOS home bar.
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 46, paddingBottom: insets.bottom + 28 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Brand header — big B mark + BESQAA wordmark over a golden radial glow */}
         <View style={styles.brandWrap}>
           <View style={styles.glowWrap} pointerEvents="none">
@@ -112,7 +121,7 @@ export default function Login() {
         <View style={{ marginTop: 18 }}>
           <Field
             icon="mail-outline"
-            placeholder="Email address"
+            placeholder="Email or mobile number"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
@@ -158,7 +167,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 26, paddingTop: 70, flexGrow: 1, backgroundColor: theme.colors.bg },
+  container: { padding: 26, flexGrow: 1, backgroundColor: theme.colors.bg },
   brandWrap: { alignItems: 'center', marginBottom: 8 },
   glowWrap: {
     position: 'absolute',
@@ -202,7 +211,9 @@ const styles = StyleSheet.create({
     color: theme.colors.gold,
     fontWeight: '700',
   },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', paddingTop: 30 },
+  // Sits right under the sign-in button (not pinned to the screen bottom) so
+  // it can never hide behind phone navigation buttons.
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 22 },
   footerText: { color: theme.colors.textMuted },
   footerLink: { color: theme.colors.gold, fontWeight: '800' },
 });

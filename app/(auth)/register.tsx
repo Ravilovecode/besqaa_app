@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { Field } from '@/components/besqaa/Field';
 import { PhoneField, isValidIndianMobile } from '@/components/besqaa/PhoneField';
@@ -23,6 +24,7 @@ const GLOW = 320;
 
 export default function Register() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -37,8 +39,12 @@ export default function Register() {
 
   async function handleRegister() {
     setError('');
-    if (!name || !email || !phone || !password) {
-      setError('Please fill in all fields');
+    if (!name || !phone || !password) {
+      setError('Please fill in your name, phone number and password');
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError('Enter a valid email address, or leave it empty');
       return;
     }
     if (!isValidIndianMobile(phone)) {
@@ -59,7 +65,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const pending = await signUp(name.trim(), email.trim(), `+91${phone}`, password);
+      const pending = await signUp(name.trim(), email.trim() || undefined, `+91${phone}`, password);
       router.push({
         pathname: '/(auth)/verify',
         params: {
@@ -82,8 +88,15 @@ export default function Register() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Pressable style={styles.back} onPress={() => router.back()}>
+      <ScrollView
+        // Safe-area aware: keeps the footer clear of Android nav buttons / iOS home bar.
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 28 },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Pressable style={[styles.back, { top: insets.top + 32 }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.white} />
         </Pressable>
 
@@ -118,15 +131,15 @@ export default function Register() {
 
         <View style={{ marginTop: 16 }}>
           <Field icon="person-outline" placeholder="Full name" value={name} onChangeText={setName} />
+          <PhoneField value={phone} onChangeText={setPhone} />
           <Field
             icon="mail-outline"
-            placeholder="Email address"
+            placeholder="Email address (optional)"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
           />
-          <PhoneField value={phone} onChangeText={setPhone} />
           <Field
             icon="lock-closed-outline"
             placeholder="Password"
@@ -171,10 +184,9 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 26, paddingTop: 56, flexGrow: 1, backgroundColor: theme.colors.bg, paddingBottom: 40 },
+  container: { padding: 26, flexGrow: 1, backgroundColor: theme.colors.bg },
   back: {
     position: 'absolute',
-    top: 56,
     left: 22,
     zIndex: 2,
     width: 44,
@@ -216,7 +228,9 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: theme.colors.gold },
   agreeText: { color: theme.colors.textMuted, flex: 1 },
   gold: { color: theme.colors.gold, fontWeight: '700' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', paddingTop: 26 },
+  // Sits right under the create-account button (not pinned to the screen
+  // bottom) so it can never hide behind phone navigation buttons.
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 22 },
   footerText: { color: theme.colors.textMuted },
   footerLink: { color: theme.colors.gold, fontWeight: '800' },
 });

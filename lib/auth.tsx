@@ -8,7 +8,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     name: string,
-    email: string,
+    email: string | undefined,
     phone: string,
     password: string
   ) => Promise<PendingVerification>;
@@ -53,11 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Registration no longer returns a token — the account must be verified
-  // via OTP (email or phone, either works) first.
-  async function signUp(name: string, email: string, phone: string, password: string) {
+  // via OTP (email or phone, either works) first. Email is optional.
+  async function signUp(name: string, email: string | undefined, phone: string, password: string) {
     return api.post<PendingVerification>(
       '/auth/register',
-      { name, email, phone, password },
+      { name, email: email || undefined, phone, password },
       false
     );
   }

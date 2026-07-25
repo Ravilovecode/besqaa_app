@@ -42,10 +42,16 @@ export type Address = {
   isDefault?: boolean;
 };
 
+export type BuybackEntry = {
+  _id?: string;
+  date: string;
+  amount: number;
+};
+
 export type User = {
   _id: string;
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   gstNumber?: string;
   gstVerified?: boolean;
@@ -54,6 +60,8 @@ export type User = {
   savedProducts?: string[];
   emailVerified?: boolean;
   phoneVerified?: boolean;
+  buybacks?: BuybackEntry[];
+  // Legacy single-entry mirror (next upcoming buyback).
   buybackDate?: string;
   buybackAmount?: number;
 };
@@ -62,10 +70,10 @@ export type User = {
 export type PendingVerification = {
   requiresVerification: true;
   pendingId: string;
-  email: string;
+  email: string; // '' for phone-only accounts
   phone: string;
   message?: string;
-  devOtps?: { email: string; phone: string };
+  devOtps?: { email?: string; phone: string };
 };
 
 export type CartItem = { product: Product; quantity: number };

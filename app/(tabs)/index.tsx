@@ -19,6 +19,7 @@ import { ProductCard } from '@/components/besqaa/ProductCard';
 import { ProductImage } from '@/components/besqaa/ProductImage';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { allBuybacks, nextBuyback } from '@/lib/buyback';
 import { useDrawer } from '@/lib/drawer';
 import { formatINR, discountPercent } from '@/lib/format';
 import { theme } from '@/lib/theme';
@@ -162,25 +163,32 @@ export default function Home() {
           <Ionicons name="chevron-forward" size={18} color={theme.colors.textDim} />
         </View>
 
-        {/* Row 3 — buyback status / add prompt */}
-        {user?.buybackDate ? (
-          <Pressable style={styles.buybackChip} onPress={() => router.push('/buyback')}>
-            <Text style={{ fontSize: 15 }}>🎁</Text>
-            <Text style={styles.buybackChipText}>
-              Buyback · {formatBuybackDate(user.buybackDate)} ·{' '}
-              <Text style={{ color: theme.colors.goldBright }}>
-                {formatINR(user.buybackAmount)}
+        {/* Row 3 — next upcoming buyback / add prompt */}
+        {(() => {
+          const next = nextBuyback(user);
+          const count = allBuybacks(user).length;
+          return next ? (
+            <Pressable style={styles.buybackChip} onPress={() => router.push('/buyback')}>
+              <Text style={{ fontSize: 15 }}>🎁</Text>
+              <Text style={styles.buybackChipText} numberOfLines={1}>
+                Next buyback · {formatBuybackDate(next.date)} ·{' '}
+                <Text style={{ color: theme.colors.goldBright }}>{formatINR(next.amount)}</Text>
               </Text>
-            </Text>
-            <Ionicons name="pencil" size={13} color={theme.colors.textDim} />
-          </Pressable>
-        ) : (
-          <Pressable style={styles.buybackAdd} onPress={() => router.push('/buyback')}>
-            <Text style={{ fontSize: 14 }}>🎁</Text>
-            <Text style={styles.buybackAddText}>Add your buyback date & amount</Text>
-            <Ionicons name="add-circle" size={17} color={theme.colors.gold} />
-          </Pressable>
-        )}
+              {count > 1 && (
+                <View style={styles.morePill}>
+                  <Text style={styles.morePillText}>+{count - 1} more</Text>
+                </View>
+              )}
+              <Ionicons name="pencil" size={13} color={theme.colors.textDim} />
+            </Pressable>
+          ) : (
+            <Pressable style={styles.buybackAdd} onPress={() => router.push('/buyback')}>
+              <Text style={{ fontSize: 14 }}>🎁</Text>
+              <Text style={styles.buybackAddText}>Add your buyback dates & amounts</Text>
+              <Ionicons name="add-circle" size={17} color={theme.colors.gold} />
+            </Pressable>
+          );
+        })()}
       </View>
 
       {/* Best deals */}
@@ -328,6 +336,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212,175,55,0.3)',
   },
   buybackChipText: { flex: 1, color: theme.colors.text, fontSize: 13, fontWeight: '700' },
+  morePill: {
+    paddingHorizontal: 8,
+    height: 22,
+    borderRadius: theme.radius.pill,
+    backgroundColor: 'rgba(212,175,55,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.4)',
+    justifyContent: 'center',
+  },
+  morePillText: { color: theme.colors.goldBright, fontSize: 11, fontWeight: '800' },
   buybackAdd: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -111,7 +111,7 @@ export function AppDrawer() {
         </View>
 
         <Text style={styles.name}>{user?.name}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
+        <Text style={styles.email}>{user?.email || user?.phone}</Text>
         {user?.gstVerified ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>GST VERIFIED SELLER</Text>

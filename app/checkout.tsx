@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -25,6 +25,7 @@ import { api, uploadImage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useCart } from '@/lib/cart';
 import { formatINR } from '@/lib/format';
+import { lookupPincode } from '@/lib/pincode';
 import { theme } from '@/lib/theme';
 import type { Order } from '@/lib/types';
 
@@ -41,12 +42,34 @@ export default function Checkout() {
   const [city, setCity] = useState(user?.addresses?.[0]?.city || '');
   const [state, setState] = useState(user?.addresses?.[0]?.state || '');
   const [pincode, setPincode] = useState(user?.addresses?.[0]?.pincode || '');
+  const [detecting, setDetecting] = useState(false);
+  const [detected, setDetected] = useState(false);
+  const lookupSeq = useRef(0);
   const [phone, setPhone] = useState(normalizeIndianMobile(user?.phone));
   const [payment, setPayment] = useState<'cod' | 'online'>('cod');
   const [proofUrl, setProofUrl] = useState('');
   const [uploadingProof, setUploadingProof] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-detect city/state once a full 6-digit pincode is typed. Best-effort:
+  // failures are silent and both fields stay editable for corrections.
+  async function onPincodeChange(t: string) {
+    const clean = t.replace(/\D/g, '');
+    setPincode(clean);
+    setDetected(false);
+    if (clean.length !== 6) return;
+    const seq = ++lookupSeq.current;
+    setDetecting(true);
+    const info = await lookupPincode(clean);
+    if (seq !== lookupSeq.current) return; // a newer lookup superseded this one
+    setDetecting(false);
+    if (info?.city) {
+      setCity(info.city);
+      setState(info.state);
+      setDetected(true);
+    }
+  }
 
   async function pickPaymentScreenshot() {
     setError('');
@@ -150,6 +173,20 @@ export default function Checkout() {
           value={landmark}
           onChangeText={setLandmark}
         />
+        <Field
+          label="Pincode"
+          placeholder="6-digit pincode"
+          keyboardType="number-pad"
+          maxLength={6}
+          value={pincode}
+          onChangeText={onPincodeChange}
+        />
+        {detecting ? (
+          <View style={styles.detectRow}>
+            <ActivityIndicator size="small" color={theme.colors.gold} />
+            <Text style={styles.detectText}>Detecting city from pincode…</Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <View style={{ flex: 1 }}>
             <Field label="City" placeholder="City" value={city} onChangeText={setCity} />
@@ -158,14 +195,14 @@ export default function Checkout() {
             <Field label="State" placeholder="State" value={state} onChangeText={setState} />
           </View>
         </View>
-        <Field
-          label="Pincode"
-          placeholder="6-digit pincode"
-          keyboardType="number-pad"
-          maxLength={6}
-          value={pincode}
-          onChangeText={(t) => setPincode(t.replace(/\D/g, ''))}
-        />
+        {detected ? (
+          <View style={styles.detectRow}>
+            <Ionicons name="checkmark-circle" size={15} color={theme.colors.success} />
+            <Text style={styles.detectText}>
+              City & state filled from pincode — tap to edit if needed.
+            </Text>
+          </View>
+        ) : null}
         <PhoneField label="Phone (for delivery updates)" value={phone} onChangeText={setPhone} />
 
         <Text style={styles.section}>Payment method</Text>
@@ -303,6 +340,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   section: { color: theme.colors.white, fontSize: 18, fontWeight: '800', marginBottom: 14, marginTop: 8 },
+  detectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: -6,
+    marginBottom: 12,
+  },
+  detectText: { color: theme.colors.textMuted, fontSize: 12.5 },
   payOption: {
     flexDirection: 'row',
     alignItems: 'center',
