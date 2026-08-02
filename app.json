@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "besqaa_app",
+    "name": "Besqaa",
     "slug": "besqaa_app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -43,6 +43,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5544e702-ad8d-4cbb-b859-3b340c0e3322"
+      }
+    },
+    "owner": "ravi1209"
   }
 }

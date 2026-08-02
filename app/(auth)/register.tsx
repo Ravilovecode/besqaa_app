@@ -39,12 +39,15 @@ export default function Register() {
 
   async function handleRegister() {
     setError('');
-    if (!name || !phone || !password) {
-      setError('Please fill in your name, phone number and password');
+    // TEMP: email is required until SMS OTP (SNS + DLT) goes live — phone-only
+    // accounts can't receive a verification code yet. The backend already
+    // supports optional email, so relaxing this later is an app-only change.
+    if (!name || !email || !phone || !password) {
+      setError('Please fill in all fields');
       return;
     }
-    if (email && !/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError('Enter a valid email address, or leave it empty');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError('Enter a valid email address');
       return;
     }
     if (!isValidIndianMobile(phone)) {
@@ -134,7 +137,7 @@ export default function Register() {
           <PhoneField value={phone} onChangeText={setPhone} />
           <Field
             icon="mail-outline"
-            placeholder="Email address (optional)"
+            placeholder="Email address"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
